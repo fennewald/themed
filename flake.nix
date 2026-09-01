@@ -32,6 +32,21 @@
     {
       overlays.default = final: _prev: { themed = themed final; };
 
+      # `homeModules` is the name the flake schema recognises; `homeManagerModules`
+      # is the older spelling many configs still import by. Keep both.
+      homeModules.themed = ./nix/hm-module.nix;
+
+      # Same module, but with `services.themed.package` defaulted to this flake's
+      # per-system build, so consumers need not add the overlay.
+      homeModules.default =
+        { pkgs, lib, ... }:
+        {
+          imports = [ ./nix/hm-module.nix ];
+          config.services.themed.package = lib.mkDefault self.packages.${pkgs.stdenv.hostPlatform.system}.themed;
+        };
+
+      homeManagerModules = self.homeModules;
+
       packages = forAllSystems (pkgs: {
         themed = themed pkgs;
         default = themed pkgs;

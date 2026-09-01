@@ -107,6 +107,35 @@ address.
 }
 ```
 
+### Home-Manager
+
+`homeManagerModules.default` defines the per-user service —
+`systemd --user` on Linux, a launchd LaunchAgent on macOS (nix-darwin or
+standalone) — and builds `themed` for the host's system, so no overlay is
+needed.
+
+```nix
+{
+  imports = [ inputs.themed.homeManagerModules.default ];
+
+  services.themed = {
+    enable = true;
+    peers = [
+      "fezzik.coelacanth-byzantine.ts.net:47100"
+      "vizzini.coelacanth-byzantine.ts.net:47100"
+    ];
+    reconcileCmd = "nu --no-config-file -c 'use theme.nu; theme reconcile'";
+  };
+}
+```
+
+`--listen` is omitted by default, so `tailscale` is placed on the service PATH
+(override with `services.themed.tailscalePackage`) and the daemon discovers its
+address itself. See `nix/hm-module.nix` for every option (`selfName`, `listen`,
+`stateFile`, `socket`, `logLevel`, `extraArgs`, …). Import
+`homeManagerModules.themed` instead if you want the package to come from
+`pkgs.themed` via `overlays.default`.
+
 ## Development
 
 ```console
