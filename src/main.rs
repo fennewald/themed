@@ -126,22 +126,29 @@ fn parse_blob(text: &str) -> std::io::Result<Value> {
         .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidInput, format!("blob: {e}")))
 }
 
-/// `$XDG_RUNTIME_DIR/themed.sock`, or a temp-dir fallback (macOS has no
-/// `XDG_RUNTIME_DIR`); the fleet passes `--socket` explicitly anyway.
+/// `$XDG_RUNTIME_DIR/themed.sock` when the runtime dir exists, else
+/// `<state dir>/themed.sock` — a path both the daemon and the CLI derive the
+/// same way on macOS, where there is no `XDG_RUNTIME_DIR`.
 fn default_socket() -> PathBuf {
     match std::env::var_os("XDG_RUNTIME_DIR") {
         Some(dir) => PathBuf::from(dir).join("themed.sock"),
-        None => std::env::temp_dir().join("themed.sock"),
+        None => state_dir().join("themed.sock"),
     }
 }
 
-/// `$XDG_STATE_HOME/themed/state.json`, falling back to `~/.local/state`.
+/// `<state dir>/state.json`.
 fn default_state_file() -> PathBuf {
-    let base = std::env::var_os("XDG_STATE_HOME")
+    state_dir().join("state.json")
+}
+
+/// `$XDG_STATE_HOME/themed`, falling back to `~/.local/state/themed`, and to a
+/// temp dir only when even `$HOME` is unset.
+fn state_dir() -> PathBuf {
+    std::env::var_os("XDG_STATE_HOME")
         .map(PathBuf::from)
         .or_else(|| std::env::var_os("HOME").map(|h| PathBuf::from(h).join(".local/state")))
-        .unwrap_or_else(std::env::temp_dir);
-    base.join("themed/state.json")
+        .unwrap_or_else(std::env::temp_dir)
+        .join("themed")
 }
 
 /// Only feeds the version tiebreaker, so a miss is harmless.

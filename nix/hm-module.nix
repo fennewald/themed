@@ -20,20 +20,10 @@ let
   isLinux = pkgs.stdenv.hostPlatform.isLinux;
   isDarwin = pkgs.stdenv.hostPlatform.isDarwin;
 
-  # macOS has no XDG_RUNTIME_DIR, so the daemon and the `themed set/get` CLI
-  # would otherwise have to agree on a temp-dir fallback. Pin it instead.
-  socketPath =
-    if cfg.socket != null then
-      cfg.socket
-    else if isDarwin then
-      "/tmp/themed.sock"
-    else
-      null;
-
   args =
     lib.optionals (cfg.selfName != null) [ "--self" cfg.selfName ]
     ++ lib.optionals (cfg.listen != null) [ "--listen" cfg.listen ]
-    ++ lib.optionals (socketPath != null) [ "--socket" socketPath ]
+    ++ lib.optionals (cfg.socket != null) [ "--socket" cfg.socket ]
     ++ lib.optionals (cfg.stateFile != null) [ "--state-file" cfg.stateFile ]
     ++ lib.optionals (cfg.reconcileCmd != null) [ "--reconcile-cmd" cfg.reconcileCmd ]
     ++ lib.concatMap (p: [ "--peer" p ]) cfg.peers
@@ -112,18 +102,19 @@ in
       default = null;
       description = ''
         Value for `--state-file`. Null uses the daemon default
-        (`$XDG_STATE_HOME/themed/state.json`).
+        (`$XDG_STATE_HOME/themed/state.json`, else
+        `~/.local/state/themed/state.json`).
       '';
     };
 
     socket = lib.mkOption {
       type = lib.types.nullOr lib.types.str;
       default = null;
-      defaultText = lib.literalExpression ''null (Linux) / "/tmp/themed.sock" (Darwin)'';
       description = ''
-        Value for `--socket`, the control socket path. On Linux, null uses the
-        daemon default (`$XDG_RUNTIME_DIR/themed.sock`). On Darwin it defaults
-        to `/tmp/themed.sock` since there is no `XDG_RUNTIME_DIR`.
+        Value for `--socket`, the control socket path. Null uses the daemon
+        default: `$XDG_RUNTIME_DIR/themed.sock`, or, where there is no
+        `XDG_RUNTIME_DIR` (macOS), `$XDG_STATE_HOME/themed/themed.sock` —
+        which the `themed set/get` CLI derives the same way.
       '';
     };
 

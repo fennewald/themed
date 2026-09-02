@@ -78,9 +78,10 @@ This repo now ships the wiring as `homeManagerModules.default` (see
    `socket`, `logLevel`, `extraArgs`.
 3. The module already emits `Restart=on-failure` (systemd) / `KeepAlive=true`
    (launchd), puts `tailscale` on the service PATH so `--listen` can be omitted
-   (`tailscale ip -4` discovery, retried), and pins `--socket` to
-   `/tmp/themed.sock` on Darwin (no `XDG_RUNTIME_DIR`). The daemon still retries
-   the bind if the tailscale interface is not up yet.
+   (`tailscale ip -4` discovery, retried). `--socket` is left to the daemon
+   default, which falls back to the state dir where there is no
+   `XDG_RUNTIME_DIR` (Darwin). The daemon still retries the bind if the
+   tailscale interface is not up yet.
 
 ---
 
@@ -133,9 +134,9 @@ or just an unparsed `String` you validated is a single JSON value.
 
 ## 5. Control socket (CLI ↔ local daemon)
 
-- **Transport**: Unix domain stream socket at `--socket` (default suggestion
-  `$XDG_RUNTIME_DIR/themed.sock`; on macOS there's no `XDG_RUNTIME_DIR` — accept
-  whatever path the flag passes, the fleet will pick a cache dir).
+- **Transport**: Unix domain stream socket at `--socket` (default
+  `$XDG_RUNTIME_DIR/themed.sock`; on macOS there's no `XDG_RUNTIME_DIR`, so the
+  default falls back to the state dir, which daemon and CLI derive alike).
 - Same newline-JSON framing. One command per connection.
 
 | Command (client → daemon)                    | Reply                                    | Effect |
@@ -253,8 +254,10 @@ version.
   `tailscale ip -4` and retries with backoff until tailscaled answers. Binding
   also retries, so starting before the tailnet is up is fine either way.
 - **Control socket default: `$XDG_RUNTIME_DIR/themed.sock`**, falling back to
-  `std::env::temp_dir()/themed.sock` on macOS. State file default:
-  `$XDG_STATE_HOME/themed/state.json` (then `~/.local/state/...`).
+  `<state dir>/themed.sock` on macOS. State dir: `$XDG_STATE_HOME/themed`, then
+  `~/.local/state/themed`, so the state file defaults to `<state dir>/state.json`.
+  Both defaults come from the same helper, so a daemon started by launchd and a
+  CLI started from a shell agree without either being told a path.
 - **Threads.** Blocking `std::net`, one thread per connection, a `Mutex<Record>`,
   and a single worker thread that runs reconcile hooks and peer fan-out in
   adoption order.
@@ -301,7 +304,7 @@ not hand-written in the fleet repo. It builds an invocation of the form:
 themed \
   [--self <hostname>] \
   [--listen <tailscale-ipv4>:47100] \
-  [--socket <path>] \            # pinned to /tmp/themed.sock on Darwin
+  [--socket <path>] \            # default: runtime dir, else the state dir
   [--state-file <path>] \
   [--reconcile-cmd '<nushell one-liner>'] \
   --peer <other-host>.coelacanth-byzantine.ts.net:47100 \

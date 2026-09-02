@@ -29,7 +29,7 @@ Invoking `themed` with no subcommand runs the daemon:
 themed \
   --self          <hostname> \
   --listen        <tailscale-ipv4>:47100 \
-  --state-file    $XDG_STATE_HOME/theme/state.json \
+  --state-file    $XDG_STATE_HOME/themed/state.json \
   --socket        $XDG_RUNTIME_DIR/themed.sock \
   --reconcile-cmd '<shell command>' \
   --peer host-a.example.ts.net:47100 \
@@ -40,8 +40,8 @@ themed \
 |---|---|---|
 | `--self` | system hostname | Only feeds the version tiebreaker. |
 | `--listen` | `$(tailscale ip -4):47100` | Discovery retries with backoff until tailscaled answers. |
-| `--state-file` | `$XDG_STATE_HOME/themed/state.json` | Rewritten in place on every adopted change, so watchers keep their inode. |
-| `--socket` | `$XDG_RUNTIME_DIR/themed.sock`, else a temp dir | macOS has no `XDG_RUNTIME_DIR`. |
+| `--state-file` | `$XDG_STATE_HOME/themed/state.json`, else `~/.local/state/themed/state.json` | Rewritten in place on every adopted change, so watchers keep their inode. |
+| `--socket` | `$XDG_RUNTIME_DIR/themed.sock`, else `$XDG_STATE_HOME/themed/themed.sock` | macOS has no `XDG_RUNTIME_DIR`; the state dir is a path the CLI derives identically. |
 | `--reconcile-cmd` | none | Run via `sh -c` with the blob on stdin. |
 | `--peer` | none | Repeatable. Zero peers is valid and harmless. |
 | `-v/--verbose` | off | Per-message tracing. `RUST_LOG` also works. |
