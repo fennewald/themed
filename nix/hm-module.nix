@@ -43,8 +43,14 @@ let
   env = (lib.optionalAttrs (cfg.logLevel != null) { RUST_LOG = cfg.logLevel; }) // cfg.extraEnv;
 
   # `tailscale ip -4` is how the daemon discovers its listen address when
-  # `--listen` is omitted (see src/main.rs).
-  servicePath = lib.makeBinPath [ cfg.tailscalePackage ];
+  # `--listen` is omitted (see src/main.rs), and `sh` is what src/reconcile.rs
+  # spawns the reconcile hook with. The launchd agent below picks a shell up
+  # from /usr/bin:/bin, but a systemd user unit inherits no PATH at all, so
+  # without one here the hook dies with ENOENT before it ever runs.
+  servicePath = lib.makeBinPath [
+    pkgs.runtimeShellPackage
+    cfg.tailscalePackage
+  ];
 
   exe = lib.getExe cfg.package;
 
@@ -124,8 +130,13 @@ in
     reconcileCmd = lib.mkOption {
       type = lib.types.nullOr lib.types.str;
       default = null;
-      example = "nu --no-config-file -c 'use theme.nu; theme reconcile'";
-      description = "Value for `--reconcile-cmd`; run via `sh -c` with the theme blob on stdin on every change.";
+      example = "/nix/store/...-themed-reconcile";
+      description = ''
+        Value for `--reconcile-cmd`; run via `sh -c` with the theme blob on
+        stdin on every change. Only a shell and {option}`tailscalePackage` are
+        on the service PATH, so the command has to name whatever else it needs
+        by absolute path.
+      '';
     };
 
     peers = lib.mkOption {
